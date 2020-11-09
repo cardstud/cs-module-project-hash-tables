@@ -4,117 +4,243 @@ class HashTableEntry:
     """
     def __init__(self, key, value):
         self.key = key
-        self.value = value
+        self.value = value 
+        self.next = None 
+
+    def __eq__(self, other):
+        if isinstance(other, HashTableEntry):
+            return self.key == other.key
+        return False
+        
+class Node:
+    def __init__(self, value):
+        self.value = value 
         self.next = None
 
+class LinkedList:
+    def __init__(self):
+        self.head = None 
+        
+    def __repr__(self):
+        currStr = ""
+        curr = self.head 
+        while curr != None:
+            currStr += f'{str(curr.value)} -->'
+            curr = curr.next 
+        return currStr  
+    
+    # return node with value 
+    # Runtime Complexity:   O(n) where n = number of nodes 
+    def find(self, value):
+        curr = self.head 
+        while curr != None:
+            if curr.value == value:
+                return curr 
+            curr = curr.next 
+        return None  
 
+    # deletes node with given value and return that node
+    # Runtime Complexity:   O(n) where n = number of nodes 
+    def delete(self,value):
+        cur = self.head
+
+        # special case if we need to delete head
+        if cur.value == value:
+            self.head = cur.next
+            return cur 
+        
+        prev = None  
+        cur = cur.next
+    
+        while cur is not None:
+            if cur.value == value:
+                prev.next = cur.next 
+                cur.next = None 
+                return cur  
+            else:
+                prev = cur
+                cur = cur.next
+        return None 
+
+    # insert node at head of list
+    # Runtime Complexity: O(1)
+    def insert_at_head(self, node):
+        node.next = self.head 
+        self.head = node 
+
+    # overwrite node or if does not exist, insert node at head
+    # Runtime Comlexity: O(n) where n is number of nodes
+    def insert_at_head_or_overwrite(self,node):
+        existingNode = self.find(node.value)     # O(n)
+
+        if existingNode != None:
+            existingNode.value = node.value
+            return False 
+
+        else:
+            self.insert_at_head(node)       # O(1)  so since worst case is O(n), its O(n)
+            return True 
 # Hash table can't have fewer than this many slots
 MIN_CAPACITY = 8
 
 
 class HashTable:
     """
-    A hash table that with `capacity` buckets
-    that accepts string keys
+    A hash table that with 'capacity' buckets that 
+    accepts string keys
 
     Implement this.
     """
 
     def __init__(self, capacity):
-        # Your code here
-
+        self.table = [None] * capacity      # initialize our table to have 8 slots
+        self.capacity = capacity            # keeping track of the size of our table
+        self.num_elements = 0               # update if add or delete element
 
     def get_num_slots(self):
         """
-        Return the length of the list you're using to hold the hash
-        table data. (Not the number of items stored in the hash table,
-        but the number of slots in the main list.)
+        Return the length of the list you're using to hold the
+        hash table data. (Not the number of items stored in the
+        hash table, but the number of slots in the main list.)
 
-        One of the tests relies on this.
+        One of the tests relies on this
 
         Implement this.
         """
-        # Your code here
-
+        return len(self.table) # same as capacity
 
     def get_load_factor(self):
         """
         Return the load factor for this hash table.
 
-        Implement this.
+        Implement this
         """
-        # Your code here
-
+        # load factor = num of elements in hash table / num slots in hash table
+        return self.num_elements / self.get_num_slots()
 
     def fnv1(self, key):
         """
         FNV-1 Hash, 64-bit
 
-        Implement this, and/or DJB2.
+        Implement this, and/or DJB2
         """
-
-        # Your code here
-
-
+        pass
+    
     def djb2(self, key):
         """
         DJB2 hash, 32-bit
 
-        Implement this, and/or FNV-1.
+        Implement this, and/or FNV-1
         """
-        # Your code here
-
+        hash = 5381
+        for x in key:
+            hash = (( hash << 5) + hash) + ord(x)
+        return hash & 0XFFFFFFFF
 
     def hash_index(self, key):
         """
         Take an arbitrary key and return a valid integer index
-        between within the storage capacity of the hash table.
+        between within the storage capacity of the hash table
         """
-        #return self.fnv1(key) % self.capacity
-        return self.djb2(key) % self.capacity
+        return self.djb2(key) % self.capacity  # mod it by self.capacity
 
-    def put(self, key, value):
+    def put(self, key,value):
         """
         Store the value with the given key.
+        
+        Hash collisions should be handled with Linked List Chaining
 
-        Hash collisions should be handled with Linked List Chaining.
-
-        Implement this.
+        Implement this
         """
-        # Your code here
+        hash_index = self.hash_index(key)
+        if self.table[hash_index] != None:
+            linked_list = self.table[hash_index]
+            did_add_new_node = linked_list.insert_at_head_or_overwrite(Node(HashTableEntry(key,value)))
+            if did_add_new_node:
+                self.num_elements += 1
 
+        else:
+            # create new linked list
+            linked_list = LinkedList()
+            linked_list.insert_at_head(Node(HashTableEntry(key,value)))
+            self.table[hash_index] = linked_list
+            self.num_elements += 1
+
+        # check load factor
+        if self.get_load_factor() > 0.7:
+            self.resize(self.get_num_slots() * 2)   # double our table with resize
 
     def delete(self, key):
         """
         Remove the value stored with the given key.
-
-        Print a warning if the key is not found.
+        
+        Print a warning if the key is not found
 
         Implement this.
         """
-        # Your code here
+        # similar to put 
+        hash_index = self.hash_index(key)
+        if self.table[hash_index] != None:
+            # do stuff
+            linked_list = self.table[hash_index]
+            did_delete_node = linked_list.delete(HashTableEntry(key, None))  # value does not matter, just want correct key
+            if did_delete_node != None:
+                self.num_elements -= 1
 
+                # check load factor
+                if self.get_load_factor() < 0.2:
+                    self.resize(self.get_num_slots() / 2)
 
-    def get(self, key):
+        else:
+            print("Warning: Node not found")
+        
+
+    def get(self,key):
         """
-        Retrieve the value stored with the given key.
+        Retrieve the value stored with the given key
 
         Returns None if the key is not found.
-
-        Implement this.
+        
+        Implement this
         """
-        # Your code here
-
+        hash_index = self.hash_index(key)
+        if self.table[hash_index] != None:
+            linked_list = self.table[hash_index]
+            node = linked_list.find(HashTableEntry(key, None))
+            if node != None:
+                return node.value.value     
+        return None
 
     def resize(self, new_capacity):
         """
         Changes the capacity of the hash table and
-        rehashes all key/value pairs.
+        rehashes all key/value pairs
 
-        Implement this.
+        Implement this
         """
-        # Your code here
+        old_table = self.table
+        self.table = [None] * int(new_capacity)
+        self.num_elements = 0 
 
+        for element in old_table:
+            if element == None:
+                continue
+            curr_node = element.head 
+            while curr_node != None:
+                temp = curr_node.next 
+                curr_node.next = None 
+                hash_index = self.hash_index(curr_node.value.key)
+
+                if self.table[hash_index] != None:
+                    self.table[hash_index].insert_at_head(curr_node)
+
+                else:
+                    linked_list = LinkedList()
+                    linked_list.insert_at_head(curr_node)
+                    self.table[hash_index] = linked_list
+
+                curr_node = temp 
+                self.num_elements += 1
 
 
 if __name__ == "__main__":
